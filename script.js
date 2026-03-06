@@ -7,9 +7,11 @@ const pomodoroTracker = document.querySelector("#pomodoro-tracker");
 const ding = document.querySelector("#ding");
 const click = document.querySelector("#click");
 
-const workTime = 25 * 60 * 1000;  // In Ms
-const restTime = 5 * 60 * 1000;
-let pomodoroMult = 1;
+const workTimeInMS = 1500000;  // In Ms
+const restTimeInMS = 300000;
+const longerRestTimeInMS = restTimeInMS * 3;
+const pomodoroMilestone = 4;
+let pomodoroMultiplier = 1;
 let remainingMs = null;
 let isTimerRunning = false;
 let isAlarmActive = false;
@@ -58,10 +60,13 @@ function updateDisplay(ms) {
 
 function resetDisplay() {
   if (todayPomodoro.isWorkSession) {
-    remainingMs = workTime * pomodoroMult;
+    remainingMs = workTimeInMS * pomodoroMultiplier;
   } else {
-    remainingMs = restTime * pomodoroMult;
-    if (todayPomodoro.count >= 4) remainingMs += restTime * 2;  // Complete 4 pomodoros get extra break
+    remainingMs = restTimeInMS * pomodoroMultiplier;
+    if (todayPomodoro.count >= pomodoroMilestone) {
+      remainingMs -= restTimeInMS;  // Replace the normal reset time with a longer one for completing 4 pomodoros
+      remainingMs += longerRestTimeInMS;
+    } 
   }
 
   updateDisplay(remainingMs);
@@ -91,36 +96,35 @@ function startTimer(totalMs) {
       isAlarmActive = true;
       btn.classList.replace("fa-pause", "fa-x");
 
-      if (todayPomodoro.isWorkSession && todayPomodoro.count < 4) todayPomodoro.count += pomodoroMult;
-      else if (!todayPomodoro.isWorkSession && todayPomodoro.count >= 4) todayPomodoro.count -= 4;
+      if (todayPomodoro.isWorkSession && todayPomodoro.count < pomodoroMilestone) todayPomodoro.count += pomodoroMultiplier;
+      else if (!todayPomodoro.isWorkSession && todayPomodoro.count >= pomodoroMilestone) todayPomodoro.count -= pomodoroMilestone;
       savePomodoroState();
       pomodoroTracker.textContent = `${todayPomodoro.count}/4 pomodoro(s)`;
     } else {
       if (!isTimerRunning) return;
-      setTimeout(tick, 250);
+      setTimeout(tick, 250);  // 1/4 of a second
     }
   }
 
   tick();
 }
 
-function pauseTimer() {  // BUG: WHEN PAUSE, YOU CAN CHANGE CLOCK TIME
+function pauseTimer() {
   isTimerRunning = false;
   updateDisplay(remainingMs)
-  console.log(remainingMs);
 }
 
 function onClickIncrement(goingToIncrement) {
-  if (isTimerRunning || !todayPomodoro.isWorkSession || remainingMs !== workTime * pomodoroMult) return;
-  // Condition: Is Not Running and is Work and time on clock should match on self
+  // Condition: Is Not Running, is Work, and time on clock should match itself
+  if (isTimerRunning || !todayPomodoro.isWorkSession || remainingMs !== workTimeInMS * pomodoroMultiplier) return;
 
   if (goingToIncrement) {
-    if (pomodoroMult < 4) {
-      pomodoroMult++;
+    if (pomodoroMultiplier < 4) {
+      pomodoroMultiplier++;
     }
   } else {
-    if (pomodoroMult > 1) {
-      pomodoroMult--;
+    if (pomodoroMultiplier > 1) {
+      pomodoroMultiplier--;
     }
   }
 
@@ -150,6 +154,7 @@ incrementBtn.addEventListener("click", () => {
   click.play();
   onClickIncrement(true);
 });
+
 decrementBtn.addEventListener("click", () => {
   click.play();
   onClickIncrement(false);
